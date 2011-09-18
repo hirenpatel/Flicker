@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<?php $this->headTitle('Flicker Photo Gallery');?>
+<?php echo $this->headScript()->prependFile($this->baseUrl.'/js/jquery.js?ver=1.2.6'); ?>
+<script type="text/javascript">
+<?php echo 'var baseUrl = "'.$this->baseUrl.'";';?>
+function doValidate() {
+	var txtSearch = $('#SearchTag').val();
+	txtSearch = jQuery.trim(txtSearch);
+	if(txtSearch == '') {
+		$('#error').show();
+		return false;
+	}
+	return true;
+}
+function doAjax(page) {
+	var data = $('#SearchTag').val();
+	$('#error').html('');
+	$('#error').hide();
+	$('#divGallery').hide();
+	$('#loading').show();
+	$.ajax({
+		type: 'GET',
+		url: baseUrl + '/index/photo/page/'+page,
+		data: {searchTag: data},
+		success: callback,
+		error: err
+	});
+}
+function callback(data, status)
+{
+	$('#divGallery').show();
+	$('#loading').hide();
+	$('#divGallery').html(data);
+}
+function err(xhr, reason, ex)
+{
+	$('#divGallery').show();
+	$('#loading').hide();
+	$('#divGallery').text(reason);
+}
+</script>
+</head>
+<body>
+
+Search By Tag: <input type="text" value="" name="SearchTag" id="SearchTag"> 
+<input type="button" name="btnTest" id="btnTest" value="Search" onclick="if(doValidate()) { doAjax(1); }">
+<div id="error" style="display:none;color:red;">Please enter valid tag.</div>
+
+<div id="divGallery" style="display:none"></div>
+<div id="loading" style="display:none;width:100%;text-align:center;"><br><br>Please wait....</div>
+</body>
+</html>
