@@ -27,27 +27,32 @@ class IndexController extends Zend_Controller_Action
         	$html .= "Please enter search keyword";
         } else {        	
         	try {        		
-        		$flickr = new Zend_Service_Flickr($this->flickrAPIKey);
         		$currentPage = 1;        		
         		$i=$this->_request->getParam('page');
         		$currentPage = (!empty($i)) ? $i : 1 ;        		
-        		$options = array(
-					        'per_page' => '30', 
-					        'page'     => $currentPage,
-					        'tag_mode' => 'all',
-					        );
-        		$photosFlickr = $flickr->tagSearch($searchTag,$options);
+
+        	  	//initialize client with data set
+			  	$client = new Zend_Rest_Client('http://api.flickr.com/services/rest/');
+			  
+			  	// set method name and API key
+			  	$client->method('flickr.photos.search');
+			  	$client->api_key($this->flickrAPIKey);
+			  
+			  	// set method arguments
+			  	$client->tags($searchTag);			  
+			  
+			  	// perform request and process response			 
+			    $result = $client->get();			  
+        		
         		$photos = array();
-        		if($photosFlickr->totalResultsAvailable > 0) {
-        			foreach($photosFlickr as $photosData) {
-        				$photos[] = array('thumbnail' => (!empty($photosData->Square->uri)) ? $photosData->Square->uri : '',
-											'original' => (!empty($photosData->Original->uri)) ? $photosData->Original->uri : '',
-        									'large' => (!empty($photosData->Large->uri)) ? $photosData->Large->uri : '',
-        									'medium' => (!empty($photosData->Medium->uri)) ? $photosData->Medium->uri : '',
-											'title' => $photosData->title,
-        									'ownername'=>$photosData->ownername);
+        		if(isset($result)) {
+        			foreach($result->photos->photo as $photo) {
+        				$photos[] = array('thumbnail' => sprintf('http://farm%s.static.flickr.com/%s/%s_%s_t.jpg', $photo['farm'], $photo['server'], $photo['id'], $photo['secret']),
+											'original' => sprintf('http://farm%s.static.flickr.com/%s/%s_%s_b.jpg', $photo['farm'], $photo['server'], $photo['id'], $photo['secret']),
+        									'title' => $photo['title'],
+        									'ownername'=>$photo['owner']);
         			}
-        		}	
+        		}
         		$html .= "<table align='center' width='90%' cellpadding='2' cellspacing='2'>";
         		if(!empty($photos)) {        			
 		            $paginator = Zend_Paginator::factory($photos);
@@ -57,9 +62,6 @@ class IndexController extends Zend_Controller_Action
 		            Zend_View_Helper_PaginationControl::setDefaultViewPartial('pagination.phtml');		            
 		            $this->view->paginator = $paginator;	
 		            	           
-		            /**
-		             * We will be using $this->view->paginator to loop thru in our view ;-)
-		             */		 
 		            Zend_Paginator::setDefaultScrollingStyle('Sliding');
 		            if($paginator) {  
         				$html .= "<tr><td colspan='5' align='center'>".$paginator."</td></tr>";
@@ -70,17 +72,14 @@ class IndexController extends Zend_Controller_Action
 							$thumbnail = $photo['thumbnail'];							
 							$title = $photo['title'];
 							$img = (!empty($photo['original'])) ? $photo['original'] : '';
-							$img = (empty($img)) && (!empty($photo['large'])) ? $photo['large'] : '';
-							$img = (empty($img)) && (!empty($photo['medium'])) ? $photo['medium'] : '';
-							$ownername = $photo['ownername'];
-							
+							$ownername = $photo['ownername'];							
 							
 							$html .= "<td width='20%' align='center'>";
 							if(!empty($img)) {
-								$html .= "<a href='".$img."' target='_blank'><img title='".$img."' class='thumb' src='".$thumbnail."'></a>";
+								$html .= "<a href='".$img."' target='_blank'><img title='".$title."' class='thumb' src='".$thumbnail."'></a>";
 								$html .= "<br><a title='".$ownername."' href='".$img."' target='_blank'>$ownername</a>";								
 							} else {
-								$html .= "<img class='thumb' src='".$thumbnail."'>";
+								$html .= "<img class='thumb' src='".$thumbnail."' title='".$title."'>";
 								$html .= "</br>".$ownername;
 							}
 							$html .= "<br></td>";							
@@ -97,7 +96,7 @@ class IndexController extends Zend_Controller_Action
         		$html .= "</table>";			
 
         	} catch (Exception $e) { 
-        		$html .=  $e; 
+        		$html .= ('ERROR: ' . $e->getMessage()); 
         	}
         	echo $html;
         }
